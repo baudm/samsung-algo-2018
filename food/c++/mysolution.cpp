@@ -1,29 +1,24 @@
-#include <cstring>
+#include <array>
 #include <algorithm>
-#include <iostream>
 
-int copy[100000];
+static std::array<int, 100000> copy;
 
 int solve(int N, int D[100000]) {
-    memcpy(copy, D, N * sizeof(int));
-    std::sort(copy, copy + N);
-    // get median
-    int x = N / 2;
+    std::copy(D, D + N, std::begin(copy));
+    std::sort(std::begin(copy), std::begin(copy) + N);
+    // Instead of manually computing each distance,
+    // just get the median of the population.
+    int median = N / 2;
     if (N % 2 == 0) {
-        x++;
+        median++;
     }
-    int target = copy[x];
-    /*
+    int target = copy[median];
+
     for (int i = 0; i < N; i++) {
-        std::cout << "i = " << i << ", " << copy[i] << std::endl;
-    }
-    */
-    //std::cout << "target = " << target << std::endl;
-    int i;
-    for (i = 0; i < N; i++) {
         if (D[i] == target) {
-            break;
+            return i;
         }
     }
-    return i;
+    // Unreachable code
+    return -1;
 }
