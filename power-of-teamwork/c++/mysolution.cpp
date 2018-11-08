@@ -1,5 +1,5 @@
 #include <limits>
-#include <iostream>
+//#include <iostream>
 //#include <cmath>
 
 const int MAX_N = 100000;
@@ -15,11 +15,30 @@ void powerup(int x, int y) {
 	}
 }
 
-long long * _fib_mod_M(long n) {
+int * _fib_mod_M(unsigned n) {
     //static long long LIM = std::sqrt(std::numeric_limits<long long>::max() / 2);
-	static long long out[2];
+    
+    static const int CACHE_SIZE = 10000000;
+    
+    static int cache1[CACHE_SIZE] = {0};
+    static int cache2[CACHE_SIZE] = {0};
+    
+    static int o1;
+    
+	static int out[2];
 	// make these static for efficiency
-	static long long a, b, c, d;
+	static long a, b, c, d;
+    
+    if (n < CACHE_SIZE) {
+        o1 = cache1[n];
+        // cache hit
+        if (o1) {
+            out[0] = o1;
+            out[1] = cache2[n];
+            return out;
+        }
+    }
+
 	if (n == 0) {
 		out[0] = 0;
 		out[1] = 1;
@@ -29,12 +48,8 @@ long long * _fib_mod_M(long n) {
 		// all terms are in mod M
 		a = out[0];
 		b = out[1];
-        //std::cout << "a = " << a << ", b = " << b << std::endl;
-		//x = ((2 * b) % M - a) % M;
 		// Fast doubling, in mod M
         c = a * (2 * b - a);
-		//c = (a * (((2 * b) % M - a) % M)) % M;
-		//d = ((a * a) + (b * b)) % M;
         d = a * a + b * b;
 		if (n % 2 == 0) {
 			out[0] = c % M;
@@ -43,6 +58,11 @@ long long * _fib_mod_M(long n) {
 			out[0] = d % M;
 			out[1] = (c + d) % M;
 		}
+		/* 104030264 */
+		if (n < CACHE_SIZE) {
+            cache1[n] = out[0];
+            cache2[n] = out[1];
+        }
 		return out;
 	}
 }
@@ -50,48 +70,53 @@ long long * _fib_mod_M(long n) {
 /**
  * Interface to _fib_mod_M
  */
-long __fib_mod_M(long n) {
+inline int fib_mod_M(unsigned n) {
+    // Make these static for efficiency
+    //static long x;
+    static int fib;
+    static bool mirror;
+    
+    // The Fibonacci sequence described in the problem is shifted by 1 index
+    n++;
+    
     // Take advantage of symmetry and periodicity of the outputs
     // to reduce the number of recursive calls
     // by finding an equivalent index which yields the same F mod M value.
-    return _fib_mod_M(n)[0];
-    /*
-    if (n <= M) {
-        long x = M - n + 1;
-        if (x < M / 2) {
-            return (n % 2 == 0) ? _fib_mod_M(x)[0] : M - _fib_mod_M(x)[0];
-        } else {
-            return _fib_mod_M(n)[0];
-        }
+    
+    // reduce the index until it's <= M
+    // The Pisano period for M is 2,000,000,016. The maximum possible index is:
+    // p = 3 * ((10e9 + 7) + 10e5 - 1) (power ups)
+    mirror = false;
+    while (n > M) {
+        n -= M + 1;
+        mirror = !mirror;
+    }
+    // upper half
+    if (n > M / 2 + 1) {
+        n = M - n + 1;
+        fib = (n % 2 == 0) ? _fib_mod_M(n)[0] : M - _fib_mod_M(n)[0];
     } else {
-        // recursively reduce the index until its within [1, M]
-        long x = n - M;
-        return M - __fib_mod_M(x - 1);
-    }*/
-}
-
-long fib_mod_M(long n) {
-    // The Fibonacci sequence described in the problem is shifted by 1 index
-    return __fib_mod_M(n + 1);
+        // lower half
+        fib = _fib_mod_M(n)[0];
+    }
+    
+    return mirror ? M - fib : fib;
 }
 
 void init(int N, int P[100000]) {
 	p_num = N;
 	p_idx = P;
-    
-    //std::cout << "fib(x) = " << fib_mod_M(100000000000L) << std::endl;
 }
 
-#include <iostream>
+
 int teamwork(int x, int y) {
-    static unsigned long long ULL_MAX = std::numeric_limits<unsigned long long>::max();
-    long n = 1000099999L;
-    long ax = -668824126L;
-    std::cout << "n = " << n << ", F(n) = " << fib_mod_M(n) << ",   " << ax % M << std::endl;
-	 long long power = 0;
-	int left, right;
-	long p;
-	for (int i = 0; i < p_num; i++) {
+    static unsigned long long MAX = std::numeric_limits<unsigned long long>::max() - M;
+    static long long power;
+	static int left, right, i;
+	static unsigned p;
+    
+    power = 0;
+	for (i = 0; i < p_num; i++) {
 		p = p_idx[i];
 		if (i >= x && i <= y) {
 			left = i - 1;
@@ -107,7 +132,7 @@ int teamwork(int x, int y) {
 		power += fib_mod_M(p);
         // Reduce modulo operations by using the largest int variable
         // Only perform it just before overflowing
-        if (power >= ULL_MAX - M) {
+        if (power >= MAX) {
             // iteratively get the mod M value
             power %= M;
         }
